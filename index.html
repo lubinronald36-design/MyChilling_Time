@@ -47,100 +47,30 @@
   <audio id="beat" src="beat.mp3" loop></audio>
 
   <script>
-    // ========= Beat Start =========
-    const statusEl = document.getElementById("status");
-    const beat = document.getElementById("beat");
-    const startBtn = document.getElementById("startBtn");
+  const beat = document.getElementById("beat");
+  let audioCtx;
 
-    startBtn.addEventListener("click", async () => {
-      try {
-        ensureAudio();
-        beat.volume = 0.5;
-        await beat.play();
-        statusEl.innerHTML = 'Status: <span class="ok">beat playing ✅ (keys ready)</span>';
-      } catch (err) {
-        statusEl.textContent = "Status: click Start again (browser blocked audio)";
-        console.log(err);
+  document.getElementById("startBtn").addEventListener("click", async () => {
+    try {
+      // 1️⃣ Create & resume AudioContext (IMPORTANT)
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
-    });
+      await audioCtx.resume();
 
-    // ========= Web Audio Notes (REAL notes, not recordings) =========
-    let audioCtx = null;
-    const active = new Map(); // key -> {osc, gain}
+      // 2️⃣ Now play the beat
+      beat.volume = 0.6;
+      await beat.play();
 
-    // Do Re Mi Fa Sol La Si Do (C major)
-    const keyToFreq = {
-      a: 261.63, // Do  (C4)
-      s: 293.66, // Re  (D4)
-      d: 329.63, // Mi  (E4)
-      f: 349.23, // Fa  (F4)
-      g: 392.00, // Sol (G4)
-      h: 440.00, // La  (A4)
-      j: 493.88, // Si  (B4)
-      k: 523.25, // Do  (C5)
-    };
-
-    function ensureAudio() {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state !== "running") audioCtx.resume().catch(() => {});
+      document.getElementById("status").textContent =
+        "Status: beat playing ✅ (keys ready)";
+    } catch (e) {
+      console.error(e);
+      document.getElementById("status").textContent =
+        "Status: click Start again";
     }
-
-    function noteOn(key) {
-      const k = key.toLowerCase();
-      const freq = keyToFreq[k];
-      if (!freq) return;
-      if (active.has(k)) return; // no duplicates while holding
-
-      ensureAudio();
-
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-
-      // Change tone here if you want: "sine" (soft) | "triangle" (musical) | "square" (8-bit)
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-
-      // fade-in to avoid click
-      const now = audioCtx.currentTime;
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
-
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-
-      osc.start();
-      active.set(k, { osc, gain });
-    }
-
-    function noteOff(key) {
-      const k = key.toLowerCase();
-      const node = active.get(k);
-      if (!node) return;
-
-      const { osc, gain } = node;
-      const now = audioCtx.currentTime;
-
-      // fade-out to avoid click
-      gain.gain.cancelScheduledValues(now);
-      gain.gain.setValueAtTime(gain.gain.value, now);
-      gain.gain.linearRampToValueAtTime(0, now + 0.03);
-
-      osc.stop(now + 0.04);
-      active.delete(k);
-    }
-
-    window.addEventListener("keydown", (e) => {
-      if (e.repeat) return;
-      noteOn(e.key);
-    });
-
-    window.addEventListener("keyup", (e) => {
-      noteOff(e.key);
-    });
-
-    // unlock audio context on first click/tap anywhere (helps some browsers)
-    window.addEventListener("pointerdown", () => ensureAudio(), { once: true });
-  </script>
+  });
+</script>
 </body>
 </html>
 
