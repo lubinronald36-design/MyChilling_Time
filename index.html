@@ -46,102 +46,68 @@
   </div>
 
   <!-- Beat1: keep beat1.mp3 in SAME folder as this index.html -->
-  <audio id="beat1" loop preload="auto">
+  <audio id="beat" loop preload="auto">
     <source src="beat1.mp3" type="audio/mpeg">
   </audio>
 
 
 <script>
-const beat = document.getElementById("beat");
-const statusEl = document.getElementById("status");
-const startBtn = document.getElementById("startBtn");
+  const beat = document.getElementById("beat");
+  const keySound = document.getElementById("keySound");
 
-// Web Audio Notes
-let audioCtx = null;
-const active = new Map();
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn  = document.getElementById("stopBtn");
+  const statusEl = document.getElementById("status");
 
-// C major scale
-const keyToFreq = {
-  a: 261.63, // C
-  s: 293.66, // D
-  d: 329.63, // E
-  f: 349.23, // F
-  g: 392.0,  // G
-  h: 440.0,  // A
-  j: 493.88, // B
-  k: 523.25  // C
-};
-
-function ensureAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function setStatus(on){
+    statusEl.textContent = on ? "Beat: ON" : "Beat: OFF";
+    statusEl.className = "small " + (on ? "ok" : "bad");
+    startBtn.disabled = on;
+    stopBtn.disabled = !on;
   }
-  return audioCtx.resume();
-}
 
-function noteOn(key) {
-  const k = key.toLowerCase();
-  const freq = keyToFreq[k];
-  if (!freq || active.has(k)) return;
-
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  osc.type = "triangle";
-  osc.frequency.value = freq;
-
-  const now = audioCtx.currentTime;
-  gain.gain.setValueAtTime(0, now);
-  gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  osc.start();
-  active.set(k, { osc, gain });
-}
-
-function noteOff(key) {
-  const k = key.toLowerCase();
-  const node = active.get(k);
-  if (!node) return;
-
-  const { osc, gain } = node;
-  const now = audioCtx.currentTime;
-
-  gain.gain.cancelScheduledValues(now);
-  gain.gain.linearRampToValueAtTime(0, now + 0.04);
-  osc.stop(now + 0.05);
-
-  active.delete(k);
-}
-
-window.addEventListener("keydown", (e) => {
-  if (!audioCtx || e.repeat) return;
-  noteOn(e.key);
-});
-
-window.addEventListener("keyup", (e) => {
-  if (!audioCtx) return;
-  noteOff(e.key);
-});
-
-startBtn.addEventListener("click", async () => {
-  try {
-    await ensureAudio();
-
-    beat1.load();        // 🔑 important
-    beat1.volume = 0.6;
-    await beat1.play();  // must be inside click
-
-    statusEl.innerHTML =
-      'Status: <span class="ok">beat playing ✅ (keys ready)</span>';
-  } catch (err) {
-    console.error(err);
-    statusEl.innerHTML =
-      'Status: <span class="bad">error</span> — audio blocked';
+  // 🔑 AUDIO UNLOCK (critical for mobile)
+  function unlockAudio() {
+    beat.muted = true;
+    beat.play().then(() => {
+      beat.pause();
+      beat.currentTime = 0;
+      beat.muted = false;
+    }).catch(()=>{});
   }
-});
+
+  startBtn.addEventListener("click", async () => {
+    unlockAudio(); // 🔥 unlock first
+    try {
+      beat.currentTime = 0;
+      await beat.play();
+      setStatus(true);
+    } catch (e) {
+      alert("Audio blocked by browser. Tap Start Beat again.");
+      console.log(e);
+    }
+  });
+
+  stopBtn.addEventListener("click", () => {
+    beat.pause();
+    beat.currentTime = 0;
+    setStatus(false);
+  });
+
+  function playKey(){
+    const s = keySound.cloneNode(true);
+    s.play().catch(()=>{});
+  }
+
+  const allowedKeys = new Set(["a","s","d","f","j","k"]);
+
+  window.addEventListener("keydown", (e) => {
+    if (allowedKeys.has(e.key.toLowerCase())) {
+      playKey();
+    }
+  });
+
+  setStatus(false);
 </script>
 </body>
 </html>
