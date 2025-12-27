@@ -20,7 +20,7 @@
 
 <body>
   <h1>MyChillingTime 🎧🎹</h1>
-  <div class="small">Beat + real musical notes (Do–Re–Mi… generated live)</div>
+  <div class="small">Beat1 + real musical notes (Do–Re–Mi… generated live)</div>
 
   <div class="box">
     <button id="startBtn">Start Beat (unlock audio)</button>
@@ -28,7 +28,7 @@
   </div>
 
   <div class="box">
-    <div><b>Play notes while the beat loops:</b></div>
+    <div><b>Play notes while the beat1 loops:</b></div>
     <div class="keys">
       <div class="chip"><kbd>A</kbd> = Do</div>
       <div class="chip"><kbd>S</kbd> = Re</div>
@@ -44,9 +44,9 @@
     </p>
   </div>
 
-  <!-- Beat: keep beat.mp3 in SAME folder as this index.html -->
-  <audio id="beat" loop preload="auto">
-    <source src="beat.mp3" type="audio/mpeg">
+  <!-- Beat1: keep beat1.mp3 in SAME folder as this index.html -->
+  <audio id="beat1" loop preload="auto">
+    <source src="beat1.mp3" type="audio/mpeg">
   </audio>
 
 
@@ -129,9 +129,9 @@ startBtn.addEventListener("click", async () => {
   try {
     await ensureAudio();
 
-    beat.load();        // 🔑 important
-    beat.volume = 0.6;
-    await beat.play();  // must be inside click
+    beat1.load();        // 🔑 important
+    beat1.volume = 0.6;
+    await beat1.play();  // must be inside click
 
     statusEl.innerHTML =
       'Status: <span class="ok">beat playing ✅ (keys ready)</span>';
