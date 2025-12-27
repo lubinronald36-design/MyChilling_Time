@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MyChillingTime — Interactive Notes</title>
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;max-width:820px;margin:28px auto;padding:0 16px;line-height:1.45}
+    h1{margin:0 0 6px}
+    .box{padding:14px 16px;border:1px solid #ddd;border-radius:12px;margin:12px 0}
+    button{padding:10px 14px;border-radius:10px;border:1px solid #111;background:#111;color:#fff;cursor:pointer}
+    kbd{padding:2px 6px;border:1px solid #bbb;border-radius:6px;background:#f7f7f7}
+    .keys{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .chip{padding:8px 10px;border:1px solid #ddd;border-radius:999px}
+    .small{color:#555;font-size:14px}
+    .ok{color:#0a7a2f;font-weight:600}
+  </style>
+</head>
+
+<body>
+  <h1>MyChillingTime 🎧🎹</h1>
+  <div class="small">Beat + real musical notes (Do–Re–Mi… generated live)</div>
+
+  <div class="box">
+    <button id="startBtn">Start Beat (unlock audio)</button>
+    <div id="status" class="small" style="margin-top:10px;">Status: not started</div>
+  </div>
+
+  <div class="box">
+    <div><b>Play notes while the beat loops:</b></div>
+    <div class="keys">
+      <div class="chip"><kbd>A</kbd> = Do</div>
+      <div class="chip"><kbd>S</kbd> = Re</div>
+      <div class="chip"><kbd>D</kbd> = Mi</div>
+      <div class="chip"><kbd>F</kbd> = Fa</div>
+      <div class="chip"><kbd>G</kbd> = Sol</div>
+      <div class="chip"><kbd>H</kbd> = La</div>
+      <div class="chip"><kbd>J</kbd> = Si</div>
+      <div class="chip"><kbd>K</kbd> = Do</div>
+    </div>
+    <p class="small" style="margin-top:10px;">
+      Tip: Click <b>Start Beat</b> once (browser rule), then press keys freely.
+    </p>
+  </div>
+
+  <!-- Beat (keep beat.mp3 in SAME folder as this index.html) -->
+  <audio id="beat" src="beat.mp3" loop></audio>
+
+  <script>
+    // ========= Beat Start =========
+    const statusEl = document.getElementById("status");
+    const beat = document.getElementById("beat");
+    const startBtn = document.getElementById("startBtn");
+
+    startBtn.addEventListener("click", async () => {
+      try {
+        ensureAudio();
+        beat.volume = 0.5;
+        await beat.play();
+        statusEl.innerHTML = 'Status: <span class="ok">beat playing ✅ (keys ready)</span>';
+      } catch (err) {
+        statusEl.textContent = "Status: click Start again (browser blocked audio)";
+        console.log(err);
+      }
+    });
+
+    // ========= Web Audio Notes (REAL notes, not recordings) =========
+    let audioCtx = null;
+    const active = new Map(); // key -> {osc, gain}
+
+    // Do Re Mi Fa Sol La Si Do (C major)
+    const keyToFreq = {
+      a: 261.63, // Do  (C4)
+      s: 293.66, // Re  (D4)
+      d: 329.63, // Mi  (E4)
+      f: 349.23, // Fa  (F4)
+      g: 392.00, // Sol (G4)
+      h: 440.00, // La  (A4)
+      j: 493.88, // Si  (B4)
+      k: 523.25, // Do  (C5)
+    };
+
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state !== "running") audioCtx.resume().catch(() => {});
+    }
+
+    function noteOn(key) {
+      const k = key.toLowerCase();
+      const freq = keyToFreq[k];
+      if (!freq) return;
+      if (active.has(k)) return; // no duplicates while holding
+
+      ensureAudio();
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      // Change tone here if you want: "sine" (soft) | "triangle" (musical) | "square" (8-bit)
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+
+      // fade-in to avoid click
+      const now = audioCtx.currentTime;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      active.set(k, { osc, gain });
+    }
+
+    function noteOff(key) {
+      const k = key.toLowerCase();
+      const node = active.get(k);
+      if (!node) return;
+
+      const { osc, gain } = node;
+      const now = audioCtx.currentTime;
+
+      // fade-out to avoid click
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setValueAtTime(gain.gain.value, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.03);
+
+      osc.stop(now + 0.04);
+      active.delete(k);
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.repeat) return;
+      noteOn(e.key);
+    });
+
+    window.addEventListener("keyup", (e) => {
+      noteOff(e.key);
+    });
+
+    // unlock audio context on first click/tap anywhere (helps some browsers)
+    window.addEventListener("pointerdown", () => ensureAudio(), { once: true });
+  </script>
+</body>
+</html>
+
+
