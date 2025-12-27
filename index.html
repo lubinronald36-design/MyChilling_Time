@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -10,105 +9,110 @@
     h1{margin:0 0 6px}
     .box{padding:14px 16px;border:1px solid #ddd;border-radius:12px;margin:12px 0}
     button{padding:10px 14px;border-radius:10px;border:1px solid #111;background:#111;color:#fff;cursor:pointer}
-    kbd{padding:2px 6px;border:1px solid #bbb;border-radius:6px;background:#f7f7f7}
-    .keys{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-    .chip{padding:8px 10px;border:1px solid #ddd;border-radius:999px}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    kbd{padding:2px 6px;border:1px solid #ccc;border-radius:6px;background:#f7f7f7}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .small{color:#555;font-size:14px}
     .ok{color:#0a7a2f;font-weight:600}
     .bad{color:#b00020;font-weight:600}
+    .keys{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+    .key{padding:12px;border:1px solid #ddd;border-radius:12px;text-align:center;background:#fff}
+    .hint{margin-top:6px;font-size:13px;color:#666}
   </style>
 </head>
-
 <body>
-  <h1>MyChillingTime 🎧🎹</h1>
-  <div class="small">Beat1 + real musical notes (Do–Re–Mi… generated live)</div>
+
+  <h1>MyChillingTime 🎵</h1>
+  <div class="small">Press keys to play notes over a looping beat.</div>
 
   <div class="box">
-    <button id="startBtn">Start Beat (unlock audio)</button>
-    <div id="status" class="small" style="margin-top:10px;">Status: not started</div>
-  </div>
-
-  <div class="box">
-    <div><b>Play notes while the beat1 loops:</b></div>
-    <div class="keys">
-      <div class="chip"><kbd>A</kbd> = Do</div>
-      <div class="chip"><kbd>S</kbd> = Re</div>
-      <div class="chip"><kbd>D</kbd> = Mi</div>
-      <div class="chip"><kbd>F</kbd> = Fa</div>
-      <div class="chip"><kbd>G</kbd> = Sol</div>
-      <div class="chip"><kbd>H</kbd> = La</div>
-      <div class="chip"><kbd>J</kbd> = Si</div>
-      <div class="chip"><kbd>K</kbd> = Do</div>
+    <div class="row">
+      <button id="startBtn">Start Beat</button>
+      <button id="stopBtn" disabled>Stop Beat</button>
+      <span id="status" class="small bad">Beat: OFF</span>
     </div>
-    <p class="small" style="margin-top:10px;">
-      Tip: Click <b>Start Beat</b> once, then press keys freely.
-    </p>
+    <div class="hint">
+      Tip: Click <b>Start Beat</b> once (this unlocks audio), then press keys freely.
+    </div>
   </div>
 
-  <!-- Beat1: keep beat1.mp3 in SAME folder as this index.html -->
-  <audio id="beat" loop preload="auto">
-    <source src="beat1.mp3" type="audio/mpeg">
+  <div class="box">
+    <div class="small"><b>Keyboard Keys:</b> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd></div>
+    <div class="keys" style="margin-top:10px">
+      <div class="key"><b>A</b><div class="hint">Note 1</div></div>
+      <div class="key"><b>S</b><div class="hint">Note 2</div></div>
+      <div class="key"><b>D</b><div class="hint">Note 3</div></div>
+      <div class="key"><b>F</b><div class="hint">Note 4</div></div>
+      <div class="key"><b>J</b><div class="hint">Note 5</div></div>
+      <div class="key"><b>K</b><div class="hint">Note 6</div></div>
+    </div>
+  </div>
+
+  <!-- AUDIO FILES -->
+  <!-- IMPORTANT: background beat file is bott.mp3 -->
+  <audio id="beat" preload="auto" loop>
+    <source src="bott.mp3" type="audio/mpeg">
   </audio>
 
+  <!-- Key sound (keep this name OR change it to your real file name) -->
+  <audio id="keySound" src="key.wav" preload="auto"></audio>
 
-<script>
-  const beat = document.getElementById("beat");
-  const keySound = document.getElementById("keySound");
+  <script>
+    const beat = document.getElementById("beat");
+    const keySound = document.getElementById("keySound");
 
-  const startBtn = document.getElementById("startBtn");
-  const stopBtn  = document.getElementById("stopBtn");
-  const statusEl = document.getElementById("status");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn  = document.getElementById("stopBtn");
+    const statusEl = document.getElementById("status");
 
-  function setStatus(on){
-    statusEl.textContent = on ? "Beat: ON" : "Beat: OFF";
-    statusEl.className = "small " + (on ? "ok" : "bad");
-    startBtn.disabled = on;
-    stopBtn.disabled = !on;
-  }
+    function setStatus(on){
+      statusEl.textContent = on ? "Beat: ON" : "Beat: OFF";
+      statusEl.className = "small " + (on ? "ok" : "bad");
+      startBtn.disabled = on;
+      stopBtn.disabled = !on;
+    }
 
-  // 🔑 AUDIO UNLOCK (critical for mobile)
-  function unlockAudio() {
-    beat.muted = true;
-    beat.play().then(() => {
+    // Start beat (includes mobile unlock)
+    startBtn.addEventListener("click", async () => {
+      try {
+        // unlock (silent quick play)
+        beat.muted = true;
+        await beat.play();
+        beat.pause();
+        beat.currentTime = 0;
+        beat.muted = false;
+
+        // start for real
+        await beat.play();
+        setStatus(true);
+      } catch (e) {
+        setStatus(false);
+        alert("Beat blocked or bott.mp3 not loading. Make sure bott.mp3 is in the same GitHub folder as index.html.");
+        console.log(e);
+      }
+    });
+
+    stopBtn.addEventListener("click", () => {
       beat.pause();
       beat.currentTime = 0;
-      beat.muted = false;
-    }).catch(()=>{});
-  }
+      setStatus(false);
+    });
 
-  startBtn.addEventListener("click", async () => {
-    unlockAudio(); // 🔥 unlock first
-    try {
-      beat.currentTime = 0;
-      await beat.play();
-      setStatus(true);
-    } catch (e) {
-      alert("Audio blocked by browser. Tap Start Beat again.");
-      console.log(e);
+    // Key sound: clone for rapid presses
+    function playKey(){
+      const s = keySound.cloneNode(true);
+      s.play().catch(()=>{});
     }
-  });
 
-  stopBtn.addEventListener("click", () => {
-    beat.pause();
-    beat.currentTime = 0;
-    setStatus(false);
-  });
-
-  function playKey(){
-    const s = keySound.cloneNode(true);
-    s.play().catch(()=>{});
-  }
-
-  const allowedKeys = new Set(["a","s","d","f","j","k"]);
-
-  window.addEventListener("keydown", (e) => {
-    if (allowedKeys.has(e.key.toLowerCase())) {
+    const allowedKeys = new Set(["a","s","d","f","j","k"]);
+    window.addEventListener("keydown", (e) => {
+      const k = e.key.toLowerCase();
+      if (!allowedKeys.has(k)) return;
       playKey();
-    }
-  });
+    });
 
-  setStatus(false);
-</script>
+    setStatus(false);
+  </script>
+
 </body>
 </html>
-
