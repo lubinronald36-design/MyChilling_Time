@@ -49,98 +49,98 @@
     <source src="beat.mp3" type="audio/mpeg">
   </audio>
 
-  <script>
-    const beat = document.getElementById("beat");
-    const statusEl = document.getElementById("status");
-    const startBtn = document.getElementById("startBtn");
+ <script>
+const beat = document.getElementById("beat");
+const statusEl = document.getElementById("status");
+const startBtn = document.getElementById("startBtn");
 
-    // Web Audio Notes (REAL tones)
-    let audioCtx = null;
-    const active = new Map();
+// Web Audio Notes
+let audioCtx = null;
+const active = new Map();
 
-    // Do Re Mi Fa Sol La Si Do (C major)
-    const keyToFreq = {
-      a: 261.63, // Do  (C4)
-      s: 293.66, // Re  (D4)
-      d: 329.63, // Mi  (E4)
-      f: 349.23, // Fa  (F4)
-      g: 392.00, // Sol (G4)
-      h: 440.00, // La  (A4)
-      j: 493.88, // Si  (B4)
-      k: 523.25  // Do  (C5)
-    };
+// C major scale
+const keyToFreq = {
+  a: 261.63, // C
+  s: 293.66, // D
+  d: 329.63, // E
+  f: 349.23, // F
+  g: 392.0,  // G
+  h: 440.0,  // A
+  j: 493.88, // B
+  k: 523.25  // C
+};
 
-    function ensureAudio() {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      return audioCtx.resume();
-    }
+function ensureAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioCtx.resume();
+}
 
-    function noteOn(key) {
-      const k = key.toLowerCase();
-      const freq = keyToFreq[k];
-      if (!freq) return;
-      if (active.has(k)) return;
+function noteOn(key) {
+  const k = key.toLowerCase();
+  const freq = keyToFreq[k];
+  if (!freq || active.has(k)) return;
 
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
 
-      osc.type = "triangle";
-      osc.frequency.value = freq;
+  osc.type = "triangle";
+  osc.frequency.value = freq;
 
-      const now = audioCtx.currentTime;
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
+  const now = audioCtx.currentTime;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
 
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
 
-      osc.start();
-      active.set(k, { osc, gain });
-    }
+  osc.start();
+  active.set(k, { osc, gain });
+}
 
-    function noteOff(key) {
-      const k = key.toLowerCase();
-      const node = active.get(k);
-      if (!node) return;
+function noteOff(key) {
+  const k = key.toLowerCase();
+  const node = active.get(k);
+  if (!node) return;
 
-      const { osc, gain } = node;
-      const now = audioCtx.currentTime;
+  const { osc, gain } = node;
+  const now = audioCtx.currentTime;
 
-      gain.gain.cancelScheduledValues(now);
-      gain.gain.setValueAtTime(gain.gain.value, now);
-      gain.gain.linearRampToValueAtTime(0, now + 0.03);
+  gain.gain.cancelScheduledValues(now);
+  gain.gain.linearRampToValueAtTime(0, now + 0.04);
+  osc.stop(now + 0.05);
 
-      osc.stop(now + 0.04);
-      active.delete(k);
-    }
+  active.delete(k);
+}
 
-    window.addEventListener("keydown", (e) => {
-      if (!audioCtx) return; // only after Start
-      if (e.repeat) return;
-      noteOn(e.key);
-    });
+window.addEventListener("keydown", (e) => {
+  if (!audioCtx || e.repeat) return;
+  noteOn(e.key);
+});
 
-    window.addEventListener("keyup", (e) => {
-      if (!audioCtx) return;
-      noteOff(e.key);
-    });
+window.addEventListener("keyup", (e) => {
+  if (!audioCtx) return;
+  noteOff(e.key);
+});
 
-    startBtn.addEventListener("click", async () => {
-      try {
-        // unlock AudioContext + start beat in same click
-        await ensureAudio();
+startBtn.addEventListener("click", async () => {
+  try {
+    await ensureAudio();
 
-        beat.volume = 0.6;
-        const p = beat.play();
-        if (p && typeof p.then === "function") await p;
+    beat.load();        // 🔑 important
+    beat.volume = 0.6;
+    await beat.play();  // must be inside click
 
-        statusEl.innerHTML = 'Status: <span class="ok">beat playing ✅ (keys ready)</span>';
-      } catch (e) {
-        console.error(e);
-        statusEl.innerHTML = 'Status: <span class="bad">error</span> — ' + (e?.message || e);
-      }
-    });
-  </script>
+    statusEl.innerHTML =
+      'Status: <span class="ok">beat playing ✅ (keys ready)</span>';
+  } catch (err) {
+    console.error(err);
+    statusEl.innerHTML =
+      'Status: <span class="bad">error</span> — audio blocked';
+  }
+});
+</script>
 </body>
 </html>
 
